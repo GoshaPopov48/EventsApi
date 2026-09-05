@@ -13,7 +13,6 @@ from app.schemas.event import EventListResponse, EventResponse
 from app.schemas.ticket import (
     RegistrationTicketRequest,
     RegistrationTicketResponse,
-    UnregisterTicketRequest,
     UnregisterTicketResponse,
 )
 from app.usecases.create_ticket import CreateTicketUsecase
@@ -122,10 +121,9 @@ async def register_event(
     return RegistrationTicketResponse(ticket_id=ticket_id)
 
 
-@router.delete("/events/{event_id}/unregister/")
-async def unregister_event(
-    event_id: UUID,
-    data: UnregisterTicketRequest,
+@router.delete("/tickets/{ticket_id}", response_model=UnregisterTicketResponse)
+async def delete_ticket(
+    ticket_id: UUID,
     session: SessionDep,
     client: Annotated[
         EventProviderClient,
@@ -135,6 +133,14 @@ async def unregister_event(
     event_repository = EventRepository(session)
     ticket_repository = TicketRepositories(session)
 
+    ticket = await ticket_repository.get_by_id(ticket_id)
+
+    if ticket is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Регистрация не найдена",
+        )
+
     usecase = UnregisterTicketUsecase(
         client=client,
         event_repository=event_repository,
@@ -142,8 +148,8 @@ async def unregister_event(
     )
 
     await usecase.execute(
-        event_id=event_id,
-        ticket_id=data.ticket_id,
+        event_id=ticket.event_id,
+        ticket_id=ticket_id,
     )
 
     return UnregisterTicketResponse(success=True)
