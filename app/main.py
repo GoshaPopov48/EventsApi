@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request,
@@ -47,6 +48,7 @@ async def validation_exception_handler(
         status_code=400,
         content={"detail": "Некорректные данные запроса"},
     )
+
 
 app.include_router(health_check)
 app.include_router(events_router)
