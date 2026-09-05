@@ -96,9 +96,8 @@ async def get_event_seat(
     return await usecase.execute(event_id)
 
 
-@router.post("/tickets/", response_model=RegistrationTicketResponse)
+@router.post("/tickets/", response_model=RegistrationTicketResponse, status_code=201)
 async def register_event(
-    event_id: UUID,
     data: RegistrationTicketRequest,
     session: SessionDep,
     client: Annotated[EventProviderClient, Depends(get_event_provider_client)],
@@ -113,7 +112,7 @@ async def register_event(
     )
 
     ticket_id = await usecase.execute(
-        event_id=event_id,
+        event_id=data.event_id,
         first_name=data.first_name,
         last_name=data.last_name,
         seat=data.seat,
