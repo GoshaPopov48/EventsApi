@@ -1,0 +1,2 @@
+class EventProviderError(Exception):
+    pass

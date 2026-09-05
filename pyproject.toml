@@ -1,0 +1,58 @@
+[project]
+name = "eventsapi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Gosha", email = "popov.goshan@mail.ru" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "alembic>=1.16.5",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.128.8",
+    "greenlet>=3.2.5",
+    "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.12",
+    "pydantic-settings>=2.11.0",
+    "sqlalchemy>=2.0.52",
+    "uvicorn>=0.39.0",
+    "email-validator>=2.3.0",
+]
+
+[project.scripts]
+eventsapi = "eventsapi:main"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
+    "ruff>=0.16.5",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",  # ошибка pycodestyle
+    "W",  # Предупреждения pycodestyle
+    "F",  # Проверка неиспользуемых импортов или переменных
+    "I",  # Сортировка импортов
+    "UP", # Обновление синтаксиса под новую версию python
+    "B",  # Поиск частых багов
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.uv]
+package = false
