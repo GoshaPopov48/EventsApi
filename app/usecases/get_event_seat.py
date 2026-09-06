@@ -1,9 +1,11 @@
 from uuid import UUID
 
-from fastapi import HTTPException
-
 from app.cache import seats_cache
 from app.clients.event_provider import EventProviderClient
+from app.clients.exeptions import (
+    EventNotFound,
+    EventNotPublished,
+)
 from app.repositories.event import EventRepository
 
 
@@ -16,15 +18,9 @@ class GetEventSeatUsecase:
         event = await self.event_repository.get_by_id(event_id)
 
         if event is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Мероприятие отсутствует",
-            )
+            raise EventNotFound()
         if event.status != "published":
-            raise HTTPException(
-                status_code=400,
-                detail="Мероприятие не опубликовано",
-            )
+            raise EventNotPublished()
         cached_seats = seats_cache.get(event_id)
 
         if cached_seats is not None:

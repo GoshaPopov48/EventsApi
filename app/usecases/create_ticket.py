@@ -1,10 +1,16 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import HTTPException
-
 from app.clients.event_provider import EventProviderClient
-from app.clients.exeptions import EventProviderError
+from app.clients.exeptions import (
+    EventAlreadyStarted,
+    EventNotFound,
+    EventNotPublished,
+    EventProviderError,
+    RegistrationClosed,
+    RegistrationError,
+    SeatNotAvailable,
+)
 from app.db.models.ticket import Ticket
 from app.repositories.event import EventRepository
 from app.repositories.ticket import TicketRepositories
@@ -27,28 +33,22 @@ class CreateTicketUsecase:
         event = await self.event_repository.get_by_id(event_id)
 
         if event is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Мероприятие отсутствует",
-            )
+            raise EventNotFound()
 
         if event.status != "published":
-            raise HTTPException(status_code=400, detail="Мероприятие не опубликовано")
+            raise EventNotPublished()
         now = datetime.now(timezone.utc)
 
         if now >= event.registration_deadline:
-            raise HTTPException(
-                status_code=400,
-                detail="Регистрация на мероприятие завершена",
-            )
+            raise RegistrationClosed()
 
         if now >= event.event_time:
-            raise HTTPException(status_code=400, detail="Мероприятие уже прошло")
+            raise EventAlreadyStarted
 
         response = await self.client.get_seats(event_id)
 
         if seat not in response.seats:
-            raise HTTPException(status_code=400, detail="Выбранное место недоступно")
+            raise SeatNotAvailable()
         try:
             ticket_id = await self.client.register(
                 event_id=event_id,
@@ -58,7 +58,7 @@ class CreateTicketUsecase:
                 email=email,
             )
         except EventProviderError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+            raise RegistrationError(str(error)) from error
 
         ticket = Ticket(
             id=ticket_id,

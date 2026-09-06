@@ -6,6 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.event_provider import EventProviderClient
+from app.clients.exeptions import (
+    EventAlreadyStarted,
+    EventNotFound,
+    EventNotPublished,
+    RegistrationClosed,
+    RegistrationError,
+    SeatNotAvailable,
+    TicketEventMismatch,
+    TicketNotFound,
+)
 from app.db.database import get_session
 from app.repositories.event import EventRepository
 from app.repositories.ticket import TicketRepositories
@@ -75,7 +85,7 @@ async def get_event(event_id: UUID, session: SessionDep):
     event = await repository.get_by_id(event_id)
 
     if event is None:
-        raise HTTPException(status_code=404, detail="Мероприятие отсутствует")
+        raise HTTPException(status_code=404, detail="Event Not Found")
 
     return event
 
@@ -92,7 +102,20 @@ async def get_event_seat(
     event_repository = EventRepository(session)
 
     usecase = GetEventSeatUsecase(client=client, event_repository=event_repository)
-    return await usecase.execute(event_id)
+    try:
+        return await usecase.execute(event_id)
+
+    except EventNotFound as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except EventNotPublished as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
 
 
 @router.post("/tickets/", response_model=RegistrationTicketResponse, status_code=201)
@@ -110,13 +133,50 @@ async def register_event(
         ticket_repository=ticket_repository,
     )
 
-    ticket_id = await usecase.execute(
-        event_id=data.event_id,
-        first_name=data.first_name,
-        last_name=data.last_name,
-        seat=data.seat,
-        email=data.email,
-    )
+    try:
+        ticket_id = await usecase.execute(
+            event_id=data.event_id,
+            first_name=data.first_name,
+            last_name=data.last_name,
+            seat=data.seat,
+            email=data.email,
+        )
+
+    except EventNotFound as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except EventNotPublished as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except RegistrationClosed as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except EventAlreadyStarted as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except SeatNotAvailable as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except RegistrationError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
 
     return RegistrationTicketResponse(ticket_id=ticket_id)
 
@@ -133,23 +193,43 @@ async def delete_ticket(
     event_repository = EventRepository(session)
     ticket_repository = TicketRepositories(session)
 
-    ticket = await ticket_repository.get_by_id(ticket_id)
-
-    if ticket is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Регистрация не найдена",
-        )
-
     usecase = UnregisterTicketUsecase(
         client=client,
         event_repository=event_repository,
         ticket_repository=ticket_repository,
     )
 
-    await usecase.execute(
-        event_id=ticket.event_id,
-        ticket_id=ticket_id,
-    )
+    try:
+        await usecase.execute(ticket_id=ticket_id)
+
+    except EventNotFound as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except TicketNotFound as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    except TicketEventMismatch as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except EventAlreadyStarted as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    except RegistrationError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
 
     return UnregisterTicketResponse(success=True)

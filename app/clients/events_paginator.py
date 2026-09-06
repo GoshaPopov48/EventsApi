@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from urllib.parse import parse_qs, urlparse
 
 from app.clients.event_provider import EventProviderClient
 from app.schemas.provider import ProviderEvent
@@ -23,4 +24,10 @@ class EventPaginator:
             if response.next is None:
                 break
 
-            cursor = response.next.split("cursor=")[1]
+            query_param = parse_qs(urlparse(response.next).query)
+            cursor_value = query_param.get("cursor")
+
+            if not cursor_value:
+                break
+
+            cursor = cursor_value[0]
